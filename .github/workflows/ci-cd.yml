@@ -1,0 +1,74 @@
+name: CI/CD
+
+on:
+  push:
+    branches:
+      - "**"
+    tags:
+      - "v*"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: Validate app
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip && pip install -r requirements.txt
+
+      - name: Compile Python sources
+        run: python -m compileall program
+
+      - name: Verify main entrypoints exist
+        run: |
+          test -f program/xplot.py
+          test -f program/xplot.bat
+          test -f README.md
+
+  package:
+    name: Package release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: ci
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build zip archive
+        run: |
+          mkdir -p dist
+          zip -r "dist/xplot-${{ github.ref_name }}.zip" . \
+            -x ".git/*" ".github/*" "program/src/__pycache__/*" "*/__pycache__/*"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: xplot-${{ github.ref_name }}
+          path: dist/xplot-${{ github.ref_name }}.zip
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "${{ github.ref_name }}" > /dev/null 2>&1; then
+            gh release upload "${{ github.ref_name }}" "dist/xplot-${{ github.ref_name }}.zip" --clobber
+          else
+            gh release create "${{ github.ref_name }}" "dist/xplot-${{ github.ref_name }}.zip" --generate-notes --title "xplot ${{ github.ref_name }}"
+          fi
