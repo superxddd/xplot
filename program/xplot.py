@@ -7,7 +7,7 @@ from src.functions import y_functions_dict
 from src.layout import sidebar_md, plotly_toolbar_config, view_select, plot_config_3d, plot_config_2d,  signal_container_3d, signal_container_2d
 from src.plotter import plot_2D, plot_3D
 from src.plot_setup import get_markers
-from src.utils import load_dataframe, plotted_analysis_simple_2d, plotted_analysis_simple_3d, raw_data, plotted_data, z_col_or_grid, plotted_data_3d
+from src.utils import load_dataframe, plotted_analysis_simple_2d, plotted_analysis_simple_3d, raw_data, plotted_data, z_col_or_grid, plotted_data_3d, handle_missing_values
 from src.image_export import show_export_format, export_name, download_chart
 
 page_config = st.set_page_config(
@@ -72,48 +72,42 @@ if st.session_state["Uploaded File"] is None:
     st.info("Please upload file(s) in the sidebar")
     st.stop()
 
-elif st.session_state["Uploaded File"] is not None:
+original_file_name  = st.session_state["Uploaded File"].name
 
-    original_file_name  = st.session_state["Uploaded File"].name
+dataframe, columns  = load_dataframe(st.session_state["Uploaded File"])
 
-    dataframe, columns  = load_dataframe(st.session_state["Uploaded File"])
+missing_value_option = st.sidebar.selectbox(
+    "Missing Value Handling",
+    ["None", "Drop Rows", "Fill with 0", "Forward Fill"],
+    index=0,
+    help="Choose how to handle missing values (NaN/empty cells) in your data"
+)
 
-    symbols             = list(dataframe)
+dataframe = handle_missing_values(dataframe, missing_value_option)
 
-    symbols.insert(0, "Not Selected")
+columns = list(dataframe.columns)
+if 'Index' in columns:
+    columns.remove('Index')
+columns.append(None)
+
+if st.session_state["View"] == '3D Plot':
+    trace["Symbol"], trace["Name"] = signal_container_3d(trace, columns)
     
-    trace_function      = []
-    signal_functions    = []
-
-    if st.session_state["View"] == '3D Plot':
-        trace["Symbol"],trace["Name"] = signal_container_3d(trace, symbols)
-
-    elif st.session_state["View"] == '2D Plot':
-        trace["Symbol"],trace["Name"],trace["Hex_rep"],trace["Bin_rep"],trace["Plot_row"],trace["Axis"],trace["Color"],trace["Size"],trace["Style"],trace["Chart_Type"] , trace["Function"],trace["Value"] ,trace["Extra_Signals"], symbol_0 = signal_container_2d(trace, symbols, st.session_state["Color_Palette"], marker_names, y_function_names)    
-
-
-
-
-#Determine plot configuration based on user selection.
-plot_config     = pd.DataFrame(trace)
-
-if st.session_state["View"] == '2D Plot':
-    plot_config     = plot_config[plot_config["Symbol"]!='Not Selected']
-    plot_config.reset_index(inplace=True)
-
-    if len(plot_config["Plot_row"]) == 0:
-        st.info("Select an <X-axis> symbol and at least one <Y-axis> symbol")
-        st.stop()
+    plot_config = pd.DataFrame.from_dict(trace)
     
-    plot = plot_2D(dataframe, plot_config, symbol_0)
-
-else:
-    if (plot_config["Symbol"][0] == 'Not Selected') or (plot_config["Symbol"][1] == 'Not Selected') or (plot_config["Symbol"][2] == 'Not Selected'):
+    if (plot_config["Symbol"][0] is None) or (plot_config["Symbol"][1] is None) or (plot_config["Symbol"][2] is None):
         st.info("Select an <X-axis> symbol, <Y-axis> symbol and <Z-axis> symbol")
         st.stop()
 
     x, y, z = z_col_or_grid(dataframe, plot_config)
-    plot = plot_3D(x, y, z,dataframe, plot_config, st.session_state["Color_Palette"], trace["Overlay"], trace["Overlay_Alpha"] ,trace["Overlay_Marker"] ,trace["Overlay_Color"] )
+    plot = plot_3D(x, y, z, dataframe, plot_config, st.session_state["Color_Palette"], trace["Overlay"], trace["Overlay_Alpha"], trace["Overlay_Marker"], trace["Overlay_Color"])
+
+else:
+    trace["Symbol"], trace["Name"], trace["Hex_rep"], trace["Bin_rep"], trace["Plot_row"], trace["Axis"], trace["Color"], trace["Size"], trace["Style"], trace["Chart_Type"], trace["Function"], trace["Value"], trace["Extra_Signals"], symbol_0 = signal_container_2d(trace, columns, st.session_state['Color_Palette'], marker_names, y_function_names)
+    
+    plot_config = pd.DataFrame.from_dict(trace)
+    
+    plot = plot_2D(dataframe, plot_config, symbol_0)
 
 
 #Plot resulting chart

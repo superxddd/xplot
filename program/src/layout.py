@@ -72,7 +72,7 @@ def plot_config_3d(view, trace, marker_names):
                 st.session_state['Color_Palette'] = diverging_color_dict().get(color_set)
 
             colormap_preview = plot_color_set(st.session_state['Color_Palette'], color_set, view)
-            col_preview.image(colormap_preview, use_column_width = True)
+            col_preview.plotly_chart(colormap_preview, use_container_width=True, config={'displayModeBar': False})
 
             if trace["Chart_Type"] != '3D Scatter':
                 trace["Grid_Res"] = col_grid_res.number_input("Grid Resolution", min_value=0.0, max_value=100000.0, value=50.0, step=0.5, key="Grid_Res")
@@ -117,7 +117,7 @@ def plot_config_2d(trace, view):
         st.session_state['Color_Palette'] = qualitive_color_sets_dict.get(color_set)
     
         colormap_preview = plot_color_set(st.session_state['Color_Palette'], color_set, view)
-        col_preview.image(colormap_preview, use_column_width = True)
+        col_preview.plotly_chart(colormap_preview, use_container_width=True, config={'displayModeBar': False})
 
         trace["Extra_Signals"] = col_extra_signals.number_input("Extra Signals", min_value=0, max_value=30, value=0, step=1, help = "Generate extra signal containers, useful if your comparing signals with functions applied")
 

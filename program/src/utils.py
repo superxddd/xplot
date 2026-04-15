@@ -3,6 +3,28 @@ import numpy as np
 import streamlit as st
 from scipy.interpolate import griddata
 
+def handle_missing_values(dataframe, method):
+    """
+    Handle missing values in dataframe.
+    
+    Parameters:
+    - dataframe: pandas DataFrame
+    - method: str, one of ['None', 'Drop Rows', 'Fill with 0', 'Forward Fill']
+    
+    Returns:
+    - processed DataFrame
+    """
+    if method == 'None':
+        return dataframe
+    elif method == 'Drop Rows':
+        return dataframe.dropna()
+    elif method == 'Fill with 0':
+        return dataframe.fillna(0)
+    elif method == 'Forward Fill':
+        return dataframe.fillna(method='ffill').fillna(method='bfill')
+    else:
+        return dataframe
+
 @st.cache
 def load_dataframe(uploaded_file):
     try:

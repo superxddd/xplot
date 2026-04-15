@@ -8,6 +8,12 @@ from palettable.scientific.diverging    import Berlin_20,   Broc_20,    Cork_20,
 from palettable.matplotlib              import Inferno_20,  Magma_20,   Plasma_20,      Viridis_20
 from palettable.colorbrewer.sequential  import Blues_9,     BuGn_9,     BuPu_9,         GnBu_9,     Greens_9,       Greys_9,        OrRd_9,         Oranges_9,      PuBu_9,     PuBuGn_9,   PuRd_9,             Purples_9,           RdPu_9, Reds_9,YlGn_9,YlGnBu_9,YlOrBr_9
 import plotly.graph_objects as go
+import plotly.io as pio
+
+try:
+    pio.kaleido.scope.chromium_args = ("--single-process",)
+except Exception:
+    pass
 
 
 @st.cache
@@ -139,5 +145,4 @@ def plot_color_set(color_palaette, color_set, is_three_d):
                                     plot_bgcolor    = 'rgba(0,0,0,0)'
                                     ),
                     )
-    fig = fig.to_image(format="png", width=200, height=60)
     return fig
