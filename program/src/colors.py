@@ -139,5 +139,5 @@ def plot_color_set(color_palaette, color_set, is_three_d):
                                     plot_bgcolor    = 'rgba(0,0,0,0)'
                                     ),
                     )
-    fig = fig.to_image(format="png", width=200, height=60)
+    # Return Plotly figure instead of static image to avoid Kaleido hanging issues
     return fig
