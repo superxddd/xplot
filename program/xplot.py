@@ -7,7 +7,7 @@ from src.functions import y_functions_dict
 from src.layout import sidebar_md, plotly_toolbar_config, view_select, plot_config_3d, plot_config_2d,  signal_container_3d, signal_container_2d
 from src.plotter import plot_2D, plot_3D
 from src.plot_setup import get_markers
-from src.utils import load_dataframe, plotted_analysis_simple_2d, plotted_analysis_simple_3d, raw_data, plotted_data, z_col_or_grid, plotted_data_3d
+from src.utils import load_dataframe, handle_missing_values, plotted_analysis_simple_2d, plotted_analysis_simple_3d, raw_data, plotted_data, z_col_or_grid, plotted_data_3d
 from src.image_export import show_export_format, export_name, download_chart
 
 page_config = st.set_page_config(
@@ -61,7 +61,7 @@ else:
     trace["Extra_Signals"], st.session_state["Color_Palette"]  = plot_config_2d(trace, st.session_state["View"])
 
 #Ask for file upload and read.
-st.sidebar.file_uploader(   
+st.sidebar.file_uploader(
                                         label="",
                                         accept_multiple_files=False,
                                         type=['csv', 'xlsx'],
@@ -77,6 +77,28 @@ elif st.session_state["Uploaded File"] is not None:
     original_file_name  = st.session_state["Uploaded File"].name
 
     dataframe, columns  = load_dataframe(st.session_state["Uploaded File"])
+
+    # Missing Values Handling Option
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("Missing Values Handling")
+    missing_value_method = st.sidebar.selectbox(
+        "Select handling method",
+        ['Keep Original', 'Drop Rows with NaN', 'Fill with 0', 'Forward Fill'],
+        help="Choose how to handle missing values (NaN/empty cells) in the data"
+    )
+
+    # Apply missing value handling
+    original_row_count = len(dataframe)
+    dataframe = handle_missing_values(dataframe, missing_value_method)
+    new_row_count = len(dataframe)
+
+    # Show info about missing values handling
+    if missing_value_method != 'Keep Original':
+        rows_affected = original_row_count - new_row_count
+        if rows_affected > 0:
+            st.sidebar.info(f"Rows affected: {rows_affected} (from {original_row_count} to {new_row_count})")
+        else:
+            st.sidebar.success("No missing values found in the data")
 
     symbols             = list(dataframe)
 
@@ -110,6 +132,11 @@ if st.session_state["View"] == '2D Plot':
 else:
     if (plot_config["Symbol"][0] == 'Not Selected') or (plot_config["Symbol"][1] == 'Not Selected') or (plot_config["Symbol"][2] == 'Not Selected'):
         st.info("Select an <X-axis> symbol, <Y-axis> symbol and <Z-axis> symbol")
+        st.stop()
+
+    # Check if enough data points for 3D interpolation (need at least 4 points for Delaunay triangulation)
+    if plot_config["Chart_Type"][0] != '3D Scatter' and len(dataframe) < 4:
+        st.error(f"Not enough data points for {plot_config['Chart_Type'][0]} plot. Need at least 4 points after missing value handling, but got {len(dataframe)}. Please use '3D Scatter' plot type or adjust missing value handling method.")
         st.stop()
 
     x, y, z = z_col_or_grid(dataframe, plot_config)

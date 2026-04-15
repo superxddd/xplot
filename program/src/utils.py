@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import streamlit as st
+import warnings
 from scipy.interpolate import griddata
 
 @st.cache
@@ -19,6 +20,33 @@ def load_dataframe(uploaded_file):
     dataframe.insert(0, 'Index', Index)
 
     return dataframe, columns
+
+def handle_missing_values(dataframe, method):
+    '''
+    Handle missing values in dataframe based on selected method.
+    
+    Parameters:
+    -----------
+    dataframe : pd.DataFrame
+        Input dataframe with potential missing values
+    method : str
+        One of: 'Keep Original', 'Drop Rows with NaN', 'Fill with 0', 'Forward Fill'
+    
+    Returns:
+    --------
+    pd.DataFrame
+        Dataframe with missing values handled according to method
+    '''
+    if method == 'Keep Original':
+        return dataframe
+    elif method == 'Drop Rows with NaN':
+        return dataframe.dropna()
+    elif method == 'Fill with 0':
+        return dataframe.fillna(0)
+    elif method == 'Forward Fill':
+        return dataframe.fillna(method='ffill')
+    else:
+        return dataframe
 
 def plotted_analysis_simple_2d(dataframe, plot_config):
     '''
@@ -112,7 +140,18 @@ def z_col_or_grid(dataframe, plot_config):
 
         X,Y = np.meshgrid(xi,yi)
 
-        z = griddata( (x,y),z,(X,Y), fill_value=plot_config["Fill_Value"][0], method='linear')  
+        try:
+            z = griddata( (x,y),z,(X,Y), fill_value=plot_config["Fill_Value"][0], method='linear')
+        except Exception as e:
+            # If linear interpolation fails (e.g., coplanar points), try nearest neighbor
+            try:
+                z = griddata( (x,y),z,(X,Y), fill_value=plot_config["Fill_Value"][0], method='nearest')
+            except Exception as e2:
+                # If all methods fail, raise a more informative error
+                raise ValueError(f"Unable to interpolate data for {plot_config['Chart_Type'][0]} plot. "
+                                 f"The data points may be collinear or coplanar. "
+                                 f"Try using '3D Scatter' plot type instead. "
+                                 f"Original error: {str(e)}")
         x = xi
         y = yi
 
